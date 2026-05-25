@@ -1074,6 +1074,10 @@ body {
 	cursor: url(../img/cursors/hand.png) 7 7, pointer;
 }
 
+.tool-noise .drawing-canvas-container:hover {
+	cursor: url(../img/cursors/noise.png) 1 14, pointer;
+}
+
 .tool-rectangle-select .drawing-canvas-container:hover,
 .tool-lasso-select .drawing-canvas-container:hover {
 	cursor: crosshair;
@@ -2177,6 +2181,10 @@ To change `display` (e.g. `display: inline-block;`), we suggest using a common C
 
 .cheatsheet-icon-tool-circle {
   background-image: url(../img/icons/tools/tool-circle.png);
+}
+
+.cheatsheet-icon-tool-noise {
+  background-image: url(../img/icons/tools/tool-noise.png);
 }
 
 .cheatsheet-icon-tool-colorpicker {

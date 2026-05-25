@@ -31394,7 +31394,8 @@ return Q;
       LIGHTEN : createShortcut('tool-lighten', 'Darken tool', 'U'),
       DITHERING : createShortcut('tool-dithering', 'Dithering tool', 'T'),
       COLORPICKER : createShortcut('tool-colorpicker', 'Color picker', 'O'),
-      OUTLINER : createShortcut('tool-outliner', 'Outline tool', 'Q')
+      OUTLINER : createShortcut('tool-outliner', 'Outline tool', 'Q'),
+      NOISE : createShortcut('tool-noise', 'Noise tool', 'F')
     },
 
     SELECTION : {
@@ -33754,7 +33755,7 @@ ns.ToolsHelper = {
 
 		this.toolId = 'tool-noise';
 		this.helpText = 'Noise';
-		this.shortcut = pskl.service.keyboard.Shortcuts.TOOL.LIGHTEN;
+		this.shortcut = pskl.service.keyboard.Shortcuts.TOOL.NOISE;
 
 		this.tooltipDescriptors = [
 			{key : 'alt', description : 'Lighten'},
