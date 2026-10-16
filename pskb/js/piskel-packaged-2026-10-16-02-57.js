@@ -23880,6 +23880,10 @@ return Q;
     this.startRenamingCurrentLayer_ = this.startRenamingCurrentLayer_.bind(this);
     this.onRenameInput_ = this.onRenameInput_.bind(this);
   };
+  
+  ns.LayersListController.prototype.addEventListener = function (el, type, callback) {
+    pskl.utils.Event.addEventListener(el, type, callback, this);
+  };
 
   ns.LayersListController.prototype.init = function () {
     this.isRenaming = false;
@@ -23893,6 +23897,12 @@ return Q;
     this.rootEl.addEventListener('click', this.onClick_.bind(this));
     this.toggleLayerPreviewEl.addEventListener('click', this.toggleLayerPreview_.bind(this));
 
+    var layerOpacityInput = document.querySelector('.layers-list-opacity-input');
+    layerOpacityInput.value = pskl.UserSettings.get(pskl.UserSettings.LAYER_OPACITY);
+    this.addEventListener(layerOpacityInput, 'change', this.onLayerOpacityChange_);
+    this.addEventListener(layerOpacityInput, 'input', this.onLayerOpacityChange_);
+    this.updateLayerOpacityText_(layerOpacityInput.value);
+
     this.createButtonTooltips_();
     this.initToggleLayerPreview_();
 
@@ -23901,6 +23911,23 @@ return Q;
 
     $.subscribe(Events.PISKEL_RESET, this.renderLayerList_.bind(this));
     $.subscribe(Events.USER_SETTINGS_CHANGED, this.onUserSettingsChange_.bind(this));
+  };
+
+  ns.LayersListController.prototype.onLayerOpacityChange_ = function (evt) {
+    var target = evt.target;
+    var opacity = parseFloat(target.value);
+    if (!isNaN(opacity)) {
+      pskl.UserSettings.set(pskl.UserSettings.LAYER_OPACITY, opacity);
+      pskl.UserSettings.set(pskl.UserSettings.LAYER_PREVIEW, opacity !== 0);
+      this.updateLayerOpacityText_(opacity);
+    } else {
+      target.value = pskl.UserSettings.get(pskl.UserSettings.LAYER_OPACITY);
+    }
+  };
+
+  ns.LayersListController.prototype.updateLayerOpacityText_ = function (opacity) {
+    var layerOpacityText = document.querySelector('.layers-list-opacity-text');
+    layerOpacityText.innerHTML = (opacity * 1).toFixed(2);
   };
 
   ns.LayersListController.prototype.renderLayerList_ = function () {
@@ -25699,13 +25726,6 @@ return Q;
       selectedColorFormatOption.setAttribute('selected', 'selected');
     }
     this.addEventListener(colorFormatSelect, 'change', this.onColorFormatChange_);
-
-    // Layer preview opacity
-    var layerOpacityInput = document.querySelector('.layer-opacity-input');
-    layerOpacityInput.value = pskl.UserSettings.get(pskl.UserSettings.LAYER_OPACITY);
-    this.addEventListener(layerOpacityInput, 'change', this.onLayerOpacityChange_);
-    this.addEventListener(layerOpacityInput, 'input', this.onLayerOpacityChange_);
-    this.updateLayerOpacityText_(layerOpacityInput.value);
   };
 
   ns.MiscPreferencesController.prototype.onBackgroundClick_ = function (evt) {
@@ -25735,22 +25755,6 @@ return Q;
     }
   };
 
-  ns.MiscPreferencesController.prototype.onLayerOpacityChange_ = function (evt) {
-    var target = evt.target;
-    var opacity = parseFloat(target.value);
-    if (!isNaN(opacity)) {
-      pskl.UserSettings.set(pskl.UserSettings.LAYER_OPACITY, opacity);
-      pskl.UserSettings.set(pskl.UserSettings.LAYER_PREVIEW, opacity !== 0);
-      this.updateLayerOpacityText_(opacity);
-    } else {
-      target.value = pskl.UserSettings.get(pskl.UserSettings.LAYER_OPACITY);
-    }
-  };
-
-  ns.MiscPreferencesController.prototype.updateLayerOpacityText_ = function (opacity) {
-    var layerOpacityText = document.querySelector('.layer-opacity-text');
-    layerOpacityText.innerHTML = (opacity * 1).toFixed(2);
-  };
 })();
 ;(function () {
   var ns = $.namespace('pskl.controller.settings.preferences');
@@ -27249,6 +27253,7 @@ return Q;
 		this.superclass.init.call(this);
 
 		this.localStorageItemTemplate_ = pskl.utils.Template.get('local-storage-item-template');
+		// this.localStorageFolderTemplate_ = pskl.utils.Template.get('local-storage-folder-template');
 
 		this.service_ = pskl.app.indexedDbStorageService;
 		this.piskelList = document.querySelector('.local-piskel-list');
@@ -27311,12 +27316,22 @@ return Q;
 				this.service_.remove(name);
 				this.fillLocalPiskelsList_();
 			}
+		} else if (action === 'rename') {
+			if (window.confirm('This will permanently DELETE this piskel from your computer. Continue ?')) {
+				this.service_.remove(name);
+				this.fillLocalPiskelsList_();
+			}
 		}
 	};
 
 	ns.BrowseLocalController.prototype.fillLocalPiskelsList_ = function () {
 		this.service_.getKeys().then(function (keys) {
 			var html = '';
+
+			// html += pskl.utils.Template.replace(this.localStorageFolderTemplate_, {
+			// 	name : "rednoise"
+			// });
+
 			keys.sort(function (k1, k2) {
 				if (k1.date < k2.date) {return 1;}
 				if (k1.date > k2.date) {return -1;}
@@ -29908,61 +29923,94 @@ return Q;
 
 })();
 ;(function () {
-  var ns = $.namespace('pskl.service.storage');
+	var ns = $.namespace('pskl.service.storage');
 
-  ns.IndexedDbStorageService = function (piskelController) {
-    this.piskelController = piskelController;
-    this.piskelDatabase = new pskl.database.PiskelDatabase();
-  };
+	ns.IndexedDbStorageService = function (piskelController) {
+		this.piskelController = piskelController;
+		this.piskelDatabase = new pskl.database.PiskelDatabase();
+	};
 
-  ns.IndexedDbStorageService.prototype.init = function () {
-    this.piskelDatabase.init().catch(function (e) {
-      console.log('Failed to initialize PiskelDatabase, local browser saves will be unavailable.');
-    });
-  };
+	ns.IndexedDbStorageService.prototype.init = function () {
+		this.piskelDatabase.init().catch(function (e) {
+			console.log('Failed to initialize PiskelDatabase, local browser saves will be unavailable.');
+		});
+	};
 
-  ns.IndexedDbStorageService.prototype.save = function (piskel) {
-    var name = piskel.getDescriptor().name;
-    var description = piskel.getDescriptor().description;
-    var date = Date.now();
-    var serialized = pskl.utils.serialization.Serializer.serialize(piskel);
+	ns.IndexedDbStorageService.prototype.save = function (piskel) {
+		var name = piskel.getDescriptor().name;
+		var description = piskel.getDescriptor().description;
+		var date = Date.now();
+		var serialized = pskl.utils.serialization.Serializer.serialize(piskel);
 
-    return this.save_(name, description, date, serialized);
-  };
+		return this.save_(name, description, date, serialized);
+	};
 
-  ns.IndexedDbStorageService.prototype.save_ = function (name, description, date, serialized) {
-    return this.piskelDatabase.get(name).then(function (piskelData) {
-      if (typeof piskelData !== 'undefined') {
-        return this.piskelDatabase.update(name, description, date, serialized);
-      } else {
-        return this.piskelDatabase.create(name, description, date, serialized);
-      }
-    }.bind(this));
-  };
+	ns.IndexedDbStorageService.prototype.save_ = function (name, description, date, serialized) {
+		return this.piskelDatabase.get(name).then(function (piskelData) {
+			if (typeof piskelData !== 'undefined') {
+				return this.piskelDatabase.update(name, description, date, serialized);
+			} else {
+				return this.piskelDatabase.create(name, description, date, serialized);
+			}
+		}.bind(this));
+	};
 
-  ns.IndexedDbStorageService.prototype.load = function (name) {
-    return this.piskelDatabase.get(name).then(function (piskelData) {
-      if (typeof piskelData !== 'undefined') {
-        var serialized = piskelData.serialized;
-        pskl.utils.serialization.Deserializer.deserialize(
-          JSON.parse(serialized),
-          function (piskel) {
-            pskl.app.piskelController.setPiskel(piskel);
-          }
-        );
-      } else {
-        console.log('no local browser save found for name: ' + name);
-      }
-    });
-  };
+	ns.IndexedDbStorageService.prototype.load = function (name) {
+		return this.piskelDatabase.get(name).then(function (piskelData) {
+			if (typeof piskelData !== 'undefined') {
+				var serialized = piskelData.serialized;
+				pskl.utils.serialization.Deserializer.deserialize(
+					JSON.parse(serialized),
+					function (piskel) {
+						pskl.app.piskelController.setPiskel(piskel);
+					}
+				);
+			} else {
+				console.log('no local browser save found for name: ' + name);
+			}
+		});
+	};
 
-  ns.IndexedDbStorageService.prototype.remove = function (name) {
-    return this.piskelDatabase.delete(name);
-  };
+	ns.IndexedDbStorageService.prototype.remove = function (name) {
+		return this.piskelDatabase.delete(name);
+	};
 
-  ns.IndexedDbStorageService.prototype.getKeys = function () {
-    return this.piskelDatabase.list();
-  };
+	// TODO: finish this
+	ns.IndexedDbStorageService.prototype.rename = function (name, newName) {
+		this.piskelDatabase.get(name).then(function (piskelData) {
+			if (typeof piskelData !== 'undefined') {
+				console.log(piskelData)
+				this.piskelDatabase.get(newName).then(function (piskelDataNN) {
+					if (typeof piskelDataNN !== 'undefined') {
+						window.alert("A piskel with this name already exists!")
+					} else {
+						pskl.utils.serialization.Deserializer.deserialize(
+							JSON.parse(piskelData.serialized),
+							function (deserializedData) {
+								console.log(deserializedData)
+
+								deserializedData.descriptor.name = newName
+
+								console.log(deserializedData)
+
+								serializedData = pskl.utils.serialization.Serializer.serialize(deserializedData)
+
+								console.log(serializedData)
+
+								return this.piskelDatabase.create(newName, piskelData.description, piskelData.date, serializedData)
+							}
+						)
+					}
+				}.bind(this));
+			} else {
+				window.alert("Error ??")
+			}
+		}.bind(this));
+	};
+
+	ns.IndexedDbStorageService.prototype.getKeys = function () {
+		return this.piskelDatabase.list();
+	};
 })();
 ;(function () {
   var ns = $.namespace('pskl.service.storage');

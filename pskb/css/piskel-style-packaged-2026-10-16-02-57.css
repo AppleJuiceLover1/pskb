@@ -2933,6 +2933,23 @@ To change `display` (e.g. `display: inline-block;`), we suggest using a common C
   flex-direction: column;
 }
 
+.layer-opacity-background {
+  background: #333;
+  padding-left: 5px;
+}
+
+.layers-list-opacity-input {
+  width: 100px;
+}
+
+.layers-gray-text {
+  color: #aaa;
+  font-size: 12px;
+  min-width: 55px;
+  vertical-align: bottom;
+  line-height: 26px;
+}
+
 /**
  * Layers title and toggle preview
  */
@@ -3389,6 +3406,7 @@ To change `display` (e.g. `display: inline-block;`), we suggest using a common C
   flex-wrap: wrap;
   justify-content: space-between;
   height: 46px;
+  padding-top: 5px;
 
   /* Override the float:left set on tools-wrapper in layout.css; */
   float: initial;
